@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Catch-All Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE SECURITY PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'anllelofigueroa99@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- STANDALONE VALIDATION ENTITY BLUEPRINTS ---
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 64
+        && data.avatarUrl is string && data.avatarUrl.size() <= 512
+        && (!data.keys().contains('coins') || data.coins is int)
+        && (!data.keys().contains('xp') || data.xp is int)
+        && (!data.keys().contains('level') || data.level is int);
+    }
+
+    function isValidRoom(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 64
+        && data.status is string && data.status.size() <= 24;
+    }
+
+    function isValidMatch(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.mode is string && data.mode.size() <= 12;
+    }
+
+    function isValidTransaction(data) {
+      return data.userId is string && data.userId.size() <= 128
+        && data.amount is int
+        && data.type is string && data.type.size() <= 32;
+    }
+
+    function isValidChatMessage(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.roomId is string && data.roomId.size() <= 128
+        && data.senderId is string && data.senderId.size() <= 128
+        && data.senderName is string && data.senderName.size() <= 64
+        && data.text is string && data.text.size() <= 512
+        && data.timestamp is int;
+    }
+
+    // --- COLLECTION PATH MATCHERS & SCHEMAS ---
+    
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(roomId) && isValidRoom(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    match /matches/{matchId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(matchId) && isValidMatch(incoming());
+      allow update, delete: if false;
+    }
+
+    match /leaderboard/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /transactions/{transId} {
+      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
+      allow create: if isSignedIn() && isValidId(transId) && isOwner(incoming().userId) && isValidTransaction(incoming());
+      allow update, delete: if false;
+    }
+
+    match /chat_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(messageId) && isOwner(incoming().senderId) && isValidChatMessage(incoming());
+      allow update, delete: if false;
+    }
+  }
+}

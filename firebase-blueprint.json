@@ -1,0 +1,148 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "Representa los perfiles de los jugadores con balance de monedas, experiencia, nivel y estadísticas.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Identificador único de Firebase Auth o LocalStorage" },
+        "name": { "type": "string", "description": "Nombre de usuario o apodo dominicano" },
+        "country": { "type": "string", "description": "Código de país ISO de 2 letras" },
+        "coins": { "type": "integer", "description": "Cantidad de monedas virtuales" },
+        "xp": { "type": "integer", "description": "Puntos de experiencia acumulados" },
+        "level": { "type": "integer", "description": "Nivel alcanzado" },
+        "avatarUrl": { "type": "string", "description": "URL de avatar del jugador" },
+        "walletAddress": { "type": "string", "description": "Dirección opcional de Web3 Wallet" },
+        "stats": { "type": "object", "description": "Estadísticas del juego (partidas jugadas, ganadas, perdidas, capicúas, etc.)" }
+      },
+      "required": ["id", "name", "avatarUrl"]
+    },
+    "rooms": {
+      "title": "Room",
+      "description": "Salas de juego de dominó activas y su estado",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Identificador de sala único" },
+        "name": { "type": "string", "description": "Nombre de la mesa" },
+        "creatorId": { "type": "string", "description": "ID del creador" },
+        "mode": { "type": "string", "description": "Modo de juego: 1v1 o 2v2" },
+        "drawMode": { "type": "string", "description": "con_loma o sin_loma" },
+        "pointsToWin": { "type": "integer", "description": "Puntaje máximo de la ronda" },
+        "stakeAmount": { "type": "integer", "description": "Apuesta en monedas" },
+        "status": { "type": "string", "description": "waiting, playing o ended" },
+        "code": { "type": "string", "description": "Código de invitación privado" },
+        "isPrivate": { "type": "boolean", "description": "Indica si la sala es privada" },
+        "roomData": { "type": "object", "description": "Estado del juego completo" }
+      },
+      "required": ["id", "name", "mode", "drawMode", "pointsToWin", "stakeAmount", "status"]
+    },
+    "matches": {
+      "title": "Match",
+      "description": "Registro de partida de dominó completada",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID único de partida" },
+        "mode": { "type": "string", "description": "Modo de juego" },
+        "drawMode": { "type": "string", "description": "Modalidad de robo (con/sin loma)" },
+        "pointsToWin": { "type": "integer", "description": "Puntos de victoria" },
+        "stakeAmount": { "type": "integer", "description": "Monedas en juego" },
+        "winnerTeam": { "type": "integer", "description": "Equipo ganador (1 o 2)" },
+        "roomName": { "type": "string", "description": "Nombre de la mesa" },
+        "playedAt": { "type": "string", "format": "date-time", "description": "Fecha de juego" },
+        "details": { "type": "object", "description": "Detalles estadísticos extras" }
+      },
+      "required": ["id", "mode", "drawMode", "winnerTeam"]
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "description": "Entrada de ranking de líderes históricos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "UserId" },
+        "name": { "type": "string", "description": "Nombre" },
+        "country": { "type": "string", "description": "País" },
+        "coins": { "type": "integer" },
+        "xp": { "type": "integer" },
+        "wonGames": { "type": "integer" },
+        "totalGames": { "type": "integer" },
+        "winRate": { "type": "string" }
+      },
+      "required": ["id", "name", "country"]
+    },
+    "tournaments": {
+      "title": "Tournament",
+      "description": "Un torneo activo o próximo de dominó",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID del torneo" },
+        "name": { "type": "string", "description": "Nombre del torneo" },
+        "status": { "type": "string", "description": "upcoming, ongoing o completed" },
+        "playersCount": { "type": "integer" },
+        "maxPlayers": { "type": "integer" },
+        "prizePool": { "type": "integer" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "roundsData": { "type": "object" }
+      },
+      "required": ["id", "name", "status", "startTime"]
+    },
+    "transactions": {
+      "title": "Transaction",
+      "description": "Historial de transacciones de monedas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "integer" },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "type"]
+    },
+    "chat_messages": {
+      "title": "ChatMessage",
+      "description": "Mensajes individuales de salas de chat",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "isPreset": { "type": "boolean" },
+        "timestamp": { "type": "integer" }
+      },
+      "required": ["id", "roomId", "senderId", "senderName", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "users",
+      "description": "Almacén principal de información y stats por jugador"
+    },
+    "rooms/{roomId}": {
+      "schema": "rooms",
+      "description": "Estado en tiempo real de mesas de dominó activas"
+    },
+    "matches/{matchId}": {
+      "schema": "matches",
+      "description": "Estadísticas inmutables de partidas disputadas"
+    },
+    "leaderboard/{userId}": {
+      "schema": "leaderboard",
+      "description": "Entrada pública agregada de ranking para mostrar lomas altas"
+    },
+    "tournaments/{tournamentId}": {
+      "schema": "tournaments",
+      "description": "Información sobre copas y torneos y su cuadro de enfrentamientos"
+    },
+    "transactions/{transId}": {
+      "schema": "transactions",
+      "description": "Registro de auditoría económica (monedas)"
+    },
+    "chat_messages/{messageId}": {
+      "schema": "chat_messages",
+      "description": "Mensajes emitidos en salas públicas y privadas"
+    }
+  }
+}

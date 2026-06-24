@@ -1,0 +1,6 @@
+{
+  "name": "Dominosfire",
+  "description": "Juego de Dominó Dominicano multijugador online 1v1 y 2v2 en tiempo real. Disfruta del juego tradicional con salas, chat, torneos, estadísticas, recompensas diarias y opciones Web3.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
