@@ -582,239 +582,180 @@ export default function App() {
 
         {/* GAME */}
         {activeTab === "game" && myRoomState && (
-          <div className="flex flex-col gap-3">
-            {/* Game info bar */}
-            <div className="bg-neutral-900 px-3 py-2.5 rounded-xl border border-neutral-800 flex justify-between items-center">
-              <div>
-                <p className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">
-                  {myRoomState.status === "playing" ? `Round ${myRoomState.roundNumber}` : "Game Over"}
-                  {myRoomState.status === "waiting" && " · Waiting for players"}
-                </p>
-                <p className="text-xs text-neutral-300 font-semibold">{myRoomState.name} · {myRoomState.mode.toUpperCase()} · Target: {myRoomState.pointsToWin}pts</p>
+          <div className="flex flex-col gap-0" style={{ userSelect: "none" }}>
+
+            {/* ── TOP BAR ── */}
+            <div className="flex justify-between items-center px-1 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">
+                  {myRoomState.status === "waiting" ? "Waiting…" : myRoomState.status === "playing" ? `Round ${myRoomState.roundNumber}` : "Game Over"}
+                </span>
+                <span className="text-[10px] text-neutral-500">{myRoomState.mode.toUpperCase()} · {myRoomState.pointsToWin}pts</span>
               </div>
-              <button onClick={handleLeaveRoom}
-                className="px-3 py-1.5 bg-red-950 border border-red-900/60 hover:bg-red-900 rounded-lg text-[10px] font-bold text-red-400 transition-all cursor-pointer">
-                Leave
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Invite code inline */}
+                <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 px-2 py-1 rounded-lg">
+                  <span className="font-mono text-[10px] font-bold text-white tracking-widest">{myRoomState.code}</span>
+                  <button onClick={() => { navigator.clipboard.writeText(myRoomState.code); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 1500); }}
+                    className="text-amber-500 cursor-pointer">
+                    {codeCopied ? <CheckCircle className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+                <button onClick={handleLeaveRoom}
+                  className="px-2.5 py-1 bg-red-950 border border-red-900/60 rounded-lg text-[10px] font-bold text-red-400 cursor-pointer">
+                  Leave
+                </button>
+              </div>
             </div>
 
-            {/* TABLE — the main board */}
+            {/* ── THE TABLE ── full width, tall, everything inside */}
             <div
-              className="w-full rounded-2xl relative overflow-hidden"
+              className="w-full rounded-2xl relative flex flex-col overflow-hidden"
               style={{
                 backgroundColor: currentTableConfig.felt,
                 border: `4px solid ${currentTableConfig.border}`,
-                boxShadow: `0 0 40px rgba(0,0,0,0.7), inset 0 0 60px rgba(0,0,0,0.3)`,
-                minHeight: "380px"
+                boxShadow: `0 0 40px rgba(0,0,0,0.8), inset 0 0 80px rgba(0,0,0,0.4)`,
+                minHeight: "520px",
               }}
             >
-              {/* Felt texture overlay */}
-              <div className="absolute inset-0 pointer-events-none opacity-20"
-                style={{ backgroundImage: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.05) 0%, transparent 60%)" }} />
+              {/* subtle felt shine */}
+              <div className="absolute inset-0 pointer-events-none"
+                style={{ background: "radial-gradient(ellipse at 50% 10%, rgba(255,255,255,0.04) 0%, transparent 70%)" }} />
 
-              {/* Top player */}
-              <div className="flex justify-center pt-2">
-                {myRoomState.players.length > 2 ? (
-                  <PlayerCard player={myRoomState.players[2]} activeTurnIdx={myRoomState.currentPlayerIndex} myIndex={2} />
+              {/* ── OPPONENT ROW (top) ── */}
+              <div className="flex justify-between items-start px-3 pt-3 pb-1 relative z-10">
+                {/* opponent left (index 1 in 1v1 = the bot/opponent) */}
+                {myRoomState.players[1] ? (
+                  <SeatBadge player={myRoomState.players[1]} isActive={myRoomState.currentPlayerIndex === 1} />
                 ) : (
-                  <div className="text-[10px] text-white/30 px-3 py-1 rounded-full border border-white/10 bg-black/20">
-                    {myRoomState.mode === "1v1" ? "1v1 Match" : "Waiting..."}
+                  <div className="w-20 h-10 rounded-xl border border-dashed border-white/10 bg-black/20 flex items-center justify-center">
+                    <span className="text-[8px] text-white/20">Empty</span>
+                  </div>
+                )}
+
+                {/* score pill center top */}
+                <div className="flex gap-3 items-center bg-black/40 border border-white/10 rounded-full px-3 py-1 backdrop-blur-sm">
+                  {myRoomState.players.slice(0, 2).map((p, i) => (
+                    <span key={i} className="text-[9px] font-bold text-white">
+                      {p.name.split(" ")[0]}: <span className="text-amber-400">{p.score}</span>
+                    </span>
+                  ))}
+                </div>
+
+                {/* 2v2: top right seat */}
+                {myRoomState.players[2] ? (
+                  <SeatBadge player={myRoomState.players[2]} isActive={myRoomState.currentPlayerIndex === 2} />
+                ) : <div className="w-20" />}
+              </div>
+
+              {/* ── BOARD AREA (center) — all tiles here, auto-zoom ── */}
+              <div className="flex-1 flex items-center justify-center px-2 py-2 relative z-10" style={{ minHeight: "200px" }}>
+                {myRoomState.board.length === 0 ? (
+                  <div className="text-center p-5 bg-black/40 rounded-2xl border border-white/10 backdrop-blur-sm">
+                    <p className="text-white/70 font-bold text-xs mb-3">
+                      {myRoomState.roundNumber === 1 ? "Double 6 starts the game" : "Play any tile to open"}
+                    </p>
+                    {myRoomState.status === "waiting" && (
+                      <button onClick={handleFillBots}
+                        className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-black font-extrabold text-xs rounded-xl active:scale-95 transition-all cursor-pointer w-full">
+                        Play vs Bots 🤖
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full">
+                    {/* end indicators */}
+                    <div className="flex justify-center gap-3 mb-2">
+                      <span className="text-[9px] font-mono bg-black/40 border border-white/10 text-amber-400 px-2 py-0.5 rounded-full">
+                        ◄ {myRoomState.leftEnd}
+                      </span>
+                      <span className="text-[9px] font-mono bg-black/40 border border-white/10 text-amber-400 px-2 py-0.5 rounded-full">
+                        {myRoomState.rightEnd} ►
+                      </span>
+                    </div>
+                    {/* AUTO-ZOOM board */}
+                    <BoardZoom tileCount={myRoomState.board.length}>
+                      {myRoomState.board.map((tile, idx) => {
+                        const isDouble = tile[0] === tile[1];
+                        const skin = TILE_SKINS.find(s => s.id === selectedSkin) || TILE_SKINS[0];
+                        return (
+                          <BoardTile key={idx} tile={tile} isDouble={isDouble} skin={skin}
+                            isFirst={idx === 0} isLast={idx === myRoomState.board.length - 1} />
+                        );
+                      })}
+                    </BoardZoom>
                   </div>
                 )}
               </div>
 
-              {/* Middle row: left player, board, right player */}
-              <div className="flex items-center justify-between px-2 my-2" style={{ minHeight: "200px" }}>
-                {/* Left seat */}
-                <div className="flex flex-col items-start">
-                  {myRoomState.players.length > 1 ? (
-                    <PlayerCard player={myRoomState.players[1]} activeTurnIdx={myRoomState.currentPlayerIndex} myIndex={1} vertical />
-                  ) : <div className="w-16" />}
+              {/* ── MY TILES — inside the table, bottom zone ── */}
+              <div className="relative z-10 px-2 pb-2">
+                {/* turn banner */}
+                <div className={`text-center text-[10px] font-bold py-1 mb-2 rounded-lg ${isMyTurn ? "bg-amber-500/30 text-amber-300 border border-amber-500/40" : "bg-black/30 text-white/40 border border-white/5"}`}>
+                  {isMyTurn ? "⚡ Your turn — tap a tile" : `${myRoomState.players[myRoomState.currentPlayerIndex]?.name?.split(" ")[0] || "Opponent"}'s turn…`}
                 </div>
 
-                {/* BOARD CENTER */}
-                <div className="flex-1 mx-2 flex flex-col items-center justify-center">
-                  {myRoomState.board.length === 0 ? (
-                    <div className="text-center p-4 bg-black/30 rounded-2xl border border-white/10 backdrop-blur-sm max-w-[200px]">
-                      <p className="text-white/80 font-bold text-xs">
-                        {myRoomState.roundNumber === 1 ? "Double 6 opens the game" : "Open play — any tile"}
-                      </p>
-                      {myRoomState.status === "waiting" && (
-                        <button onClick={handleFillBots}
-                          className="mt-3 px-3 py-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 text-black font-extrabold text-[10px] rounded-lg active:scale-95 transition-all cursor-pointer w-full">
-                          Play vs Bots 🤖
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-full">
-                      <div className="flex items-center justify-center gap-1.5 text-[9px] font-mono py-1 px-2 bg-black/30 border border-white/10 rounded-full mb-2 w-fit mx-auto">
-                        <span className="text-white/60">Left: <strong className="text-amber-400">{myRoomState.leftEnd}</strong></span>
-                        <span className="text-white/30">·</span>
-                        <span className="text-white/60">Right: <strong className="text-amber-400">{myRoomState.rightEnd}</strong></span>
-                      </div>
-                      {/* Domino tiles on board — horizontal scroll */}
-                      <BoardZoom tileCount={myRoomState.board.length}>
-                        {myRoomState.board.map((tile, idx) => {
-                          const isDouble = tile[0] === tile[1];
-                          const skin = TILE_SKINS.find(s => s.id === selectedSkin) || TILE_SKINS[0];
-                          return (
-                            <BoardTile key={idx} tile={tile} isDouble={isDouble} skin={skin} isFirst={idx === 0} isLast={idx === myRoomState.board.length - 1} />
-                          );
-                        })}
-                      </BoardZoom>
-                    </div>
-                  )}
-                </div>
-
-                {/* Right seat */}
-                <div className="flex flex-col items-end">
-                  {myRoomState.players.length > 3 ? (
-                    <PlayerCard player={myRoomState.players[3]} activeTurnIdx={myRoomState.currentPlayerIndex} myIndex={3} vertical />
-                  ) : <div className="w-16" />}
-                </div>
-              </div>
-
-              {/* Bottom player (me) */}
-              <div className="flex justify-center pb-2">
-                {myRoomState.players.length > 0 && (
-                  <PlayerCard player={myRoomState.players[0]} activeTurnIdx={myRoomState.currentPlayerIndex} myIndex={0} isSelf />
-                )}
-              </div>
-            </div>
-
-            {/* Turn indicator */}
-            {myRoomState.status === "playing" && (
-              <div className={`rounded-xl px-3 py-2 text-center text-xs font-bold border ${isMyTurn ? "bg-amber-500/20 border-amber-500/50 text-amber-300" : "bg-neutral-900 border-neutral-800 text-neutral-400"}`}>
-                {isMyTurn ? "⚡ Your turn — select a tile to play" : `Waiting for ${myRoomState.players[myRoomState.currentPlayerIndex]?.name || "opponent"}...`}
-              </div>
-            )}
-
-            {/* My hand */}
-            <div className="bg-neutral-900 rounded-2xl p-3 border border-neutral-800">
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-xs font-bold text-neutral-300">Your Hand</p>
-                <div className="flex gap-2">
+                {/* action buttons row */}
+                <div className="flex justify-end gap-2 mb-2">
                   {myRoomState.drawMode === "con_loma" && (
                     <button onClick={handleDrawTile} disabled={!isMyTurn || myRoomState.deck.length === 0}
-                      className="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 font-bold text-[10px] text-neutral-300 hover:text-white rounded-lg transition-all cursor-pointer border border-neutral-700">
+                      className="px-3 py-1 bg-black/50 border border-white/10 disabled:opacity-30 font-bold text-[10px] text-white rounded-lg cursor-pointer backdrop-blur-sm">
                       Draw ({myRoomState.deck.length})
                     </button>
                   )}
                   <button onClick={handlePassTurn} disabled={!isMyTurn}
-                    className="px-3 py-1 bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-amber-500 hover:text-black hover:border-amber-500 disabled:opacity-40 font-bold text-[10px] rounded-lg transition-all cursor-pointer">
+                    className="px-3 py-1 bg-black/50 border border-white/10 hover:bg-amber-500/20 hover:border-amber-500/40 hover:text-amber-300 disabled:opacity-30 font-bold text-[10px] text-white rounded-lg cursor-pointer backdrop-blur-sm">
                     Pass
                   </button>
                 </div>
-              </div>
 
-              {/* Player tiles */}
-              <div className="flex items-end justify-center gap-1.5 overflow-x-auto py-2" style={{ scrollbarWidth: "none" }}>
+                {/* MY HAND tiles */}
                 {!meAsPlayer || meAsPlayer.tiles.length === 0 ? (
-                  <p className="text-[10px] text-neutral-500 py-4">No tiles in hand.</p>
+                  <p className="text-[10px] text-white/30 text-center py-2">No tiles in hand.</p>
                 ) : (
-                  meAsPlayer.tiles.map((tile, index) => {
-                    const skin = TILE_SKINS.find(s => s.id === selectedSkin) || TILE_SKINS[0];
-                    const leftVal = myRoomState.leftEnd;
-                    const rightVal = myRoomState.rightEnd;
-                    const fits = isMyTurn && (
-                      leftVal === null ||
-                      tile[0] === leftVal || tile[1] === leftVal ||
-                      tile[0] === rightVal || tile[1] === rightVal
-                    );
-                    return (
-                      <HandTile key={index} tile={tile} skin={skin} fits={!!fits} onClick={() => handlePlayTileClick(tile)} />
-                    );
-                  })
+                  <div className="flex items-end justify-center gap-1 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                    {meAsPlayer.tiles.map((tile, index) => {
+                      const skin = TILE_SKINS.find(s => s.id === selectedSkin) || TILE_SKINS[0];
+                      const leftVal = myRoomState.leftEnd;
+                      const rightVal = myRoomState.rightEnd;
+                      const fits = isMyTurn && (
+                        leftVal === null ||
+                        tile[0] === leftVal || tile[1] === leftVal ||
+                        tile[0] === rightVal || tile[1] === rightVal
+                      );
+                      return (
+                        <HandTile key={index} tile={tile} skin={skin} fits={!!fits} onClick={() => handlePlayTileClick(tile)} />
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* Score / room info row */}
-            <div className="grid grid-cols-2 gap-2">
-              {/* Invite code */}
-              <div className="bg-neutral-900 rounded-xl p-3 border border-neutral-800">
-                <p className="text-[9px] text-neutral-500 uppercase tracking-wider mb-1">Invite Code</p>
-                <div className="flex items-center gap-2">
-                  <strong className="font-mono text-sm tracking-widest text-white">{myRoomState.code}</strong>
-                  <button onClick={() => {
-                    navigator.clipboard.writeText(myRoomState.code);
-                    setCodeCopied(true);
-                    setTimeout(() => setCodeCopied(false), 1500);
-                  }} className="p-1 bg-neutral-800 rounded text-amber-500 cursor-pointer hover:bg-neutral-700">
-                    {codeCopied ? <CheckCircle className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
-                  </button>
-                </div>
+              {/* ── MY SEAT BADGE — bottom left corner ── */}
+              <div className="absolute bottom-2 left-2 z-20">
+                {myRoomState.players[0] && (
+                  <SeatBadge player={myRoomState.players[0]} isActive={myRoomState.currentPlayerIndex === 0} isSelf />
+                )}
               </div>
 
-              {/* Scores */}
-              <div className="bg-neutral-900 rounded-xl p-3 border border-neutral-800">
-                <p className="text-[9px] text-neutral-500 uppercase tracking-wider mb-1">Scores</p>
-                <div className="space-y-0.5">
-                  {myRoomState.players.slice(0, 2).map((p, i) => (
-                    <div key={i} className="flex justify-between text-[10px]">
-                      <span className="text-neutral-400 truncate max-w-[80px]">{p.name}</span>
-                      <span className="font-bold text-amber-400">{p.score}pts</span>
-                    </div>
-                  ))}
+              {/* ── 2v2: right seat ── */}
+              {myRoomState.players[3] && (
+                <div className="absolute bottom-2 right-2 z-20">
+                  <SeatBadge player={myRoomState.players[3]} isActive={myRoomState.currentPlayerIndex === 3} />
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Commentary */}
+            {/* ── COMMENTARY (below table) ── */}
             {geminiComment && (
-              <div className="bg-neutral-900 border border-amber-500/15 p-3 rounded-xl flex items-start gap-2">
-                <span className="text-base">🎙️</span>
+              <div className="mt-2 bg-neutral-900/80 border border-amber-500/10 p-3 rounded-xl flex items-start gap-2">
+                <span className="text-base shrink-0">🎙️</span>
                 <p className="text-[11px] italic text-neutral-300 leading-relaxed flex-1">{geminiComment}</p>
                 <button onClick={triggerGeminiComment} disabled={isSyncingComment}
-                  className="text-[9px] text-teal-400 hover:text-white cursor-pointer disabled:opacity-50 shrink-0">
-                  ↻
-                </button>
+                  className="text-[9px] text-teal-400 hover:text-white cursor-pointer disabled:opacity-50 shrink-0">↻</button>
               </div>
             )}
 
-            {/* Chat */}
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3 flex flex-col" style={{ maxHeight: "260px" }}>
-              <div className="flex gap-2 items-center text-[10px] font-bold text-neutral-400 border-b border-neutral-800 pb-2 mb-2">
-                <MessageSquare className="w-3.5 h-3.5 text-teal-400" /> Table Chat
-              </div>
-              <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-2 mb-2" style={{ scrollbarWidth: "none" }}>
-                {myRoomState.messages.length === 0 ? (
-                  <p className="text-[10px] text-neutral-500 text-center py-3">No messages yet.</p>
-                ) : (
-                  myRoomState.messages.map(msg => {
-                    const isMe = msg.senderId === playerId;
-                    return (
-                      <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                        <span className="text-[9px] text-neutral-500 mb-0.5">{msg.senderName}</span>
-                        <div className={`p-2 rounded-xl text-[10px] max-w-[80%] ${isMe ? "bg-amber-500 text-black font-semibold rounded-tr-none" : "bg-neutral-950 text-neutral-200 rounded-tl-none border border-neutral-800"}`}>
-                          {msg.text}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-1 mb-2">
-                {QUICK_SAYINGS.slice(0, 3).map((s, i) => (
-                  <button key={i} onClick={() => handleSendChat(s)}
-                    className="p-1 bg-neutral-950 border border-neutral-800 hover:border-amber-500/30 text-neutral-400 hover:text-amber-400 text-[9px] rounded-lg truncate transition-all cursor-pointer">
-                    {s}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <input type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSendChat(); }}
-                  placeholder="Type a message..." className="flex-1 bg-neutral-950 border border-neutral-800 text-[10px] text-white p-2 rounded-lg outline-none focus:border-amber-500 h-8" />
-                <button onClick={() => handleSendChat()}
-                  className="p-2 px-3 bg-amber-500 hover:bg-amber-400 text-black rounded-lg active:scale-95 transition-all text-xs font-semibold cursor-pointer h-8 flex items-center">
-                  <Send className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -1069,32 +1010,54 @@ export default function App() {
   );
 }
 
-// Auto-zoom board — shrinks tiles to fit all in view
+// Auto-zoom board — shrinks tiles to always fit inside the container
 function BoardZoom({ tileCount, children }: { tileCount: number; children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    if (!containerRef.current || !innerRef.current) return;
-    const containerW = containerRef.current.offsetWidth;
-    const innerW = innerRef.current.scrollWidth;
-    if (innerW > containerW) {
-      const newScale = Math.max(0.38, containerW / innerW);
-      setScale(newScale);
-    } else {
-      setScale(1);
-    }
+    const measure = () => {
+      if (!containerRef.current || !innerRef.current) return;
+      // Temporarily reset scale to measure true size
+      innerRef.current.style.transform = "scale(1)";
+      const containerW = containerRef.current.getBoundingClientRect().width;
+      const innerW = innerRef.current.scrollWidth;
+      if (innerW > 0 && containerW > 0) {
+        const newScale = innerW > containerW ? Math.max(0.3, containerW / innerW) : 1;
+        setScale(newScale);
+      }
+    };
+    // Use a small delay so the DOM has rendered the new tile
+    const t = setTimeout(measure, 30);
+    return () => clearTimeout(t);
   }, [tileCount]);
 
   return (
-    <div ref={containerRef} className="w-full overflow-hidden flex items-center justify-center" style={{ minHeight: "60px" }}>
+    <div ref={containerRef} className="w-full flex items-center justify-center overflow-hidden" style={{ minHeight: "56px" }}>
       <div
         ref={innerRef}
-        className="flex flex-row items-center gap-1 px-1 py-1 origin-center transition-transform duration-300"
-        style={{ transform: `scale(${scale})`, transformOrigin: "center center", whiteSpace: "nowrap" }}
+        className="flex flex-row items-center gap-1 px-1 py-1 transition-transform duration-300"
+        style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}
       >
         {children}
+      </div>
+    </div>
+  );
+}
+
+// Seat badge — compact player info shown on the table
+function SeatBadge({ player, isActive, isSelf = false }: { player: Player; isActive: boolean; isSelf?: boolean }) {
+  return (
+    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-xl border backdrop-blur-sm transition-all bg-black/50 ${isActive ? "border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.35)]" : "border-white/10"}`}>
+      <div className="relative">
+        <img src={player.avatarUrl} alt={player.name} className="w-7 h-7 rounded-lg border border-white/10" />
+        {player.isBot && <span className="absolute -top-1 -right-1 bg-zinc-700 text-[6px] text-white px-0.5 rounded">AI</span>}
+        {isActive && <span className="absolute -top-1 -left-1 w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />}
+      </div>
+      <div>
+        <p className="text-[9px] font-bold text-white leading-none">{isSelf ? "You" : player.name.split(" ")[0]}</p>
+        <p className="text-[8px] text-amber-400 font-mono">{player.score}pt · {player.tiles.length} 🁣</p>
       </div>
     </div>
   );
